@@ -1,0 +1,14 @@
+# fdroidserver config for the Sonic. repository: a binary repo of the exact APKs
+# published on https://github.com/Abhiroop1122/Sonic/releases. Nothing is rebuilt.
+repo_url: https://somchandra17.github.io/sonic-fdroid/repo
+repo_name: Sonic.
+repo_description: >-
+  The Sonic. record player, from its own GitHub releases: the same APKs, the same
+  signing key, so an install from here and one from GitHub update each other.
+repo_icon: icon.png
+archive_older: 0
+repo_keyalias: sonic-fdroid
+keystore: keystore.p12
+keystorepass: {env: KEYSTOREPASS}
+keypass: {env: KEYPASS}
+keydname: CN=Sonic F-Droid repository, O=Sonic

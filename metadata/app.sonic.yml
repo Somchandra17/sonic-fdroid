@@ -1,0 +1,14 @@
+AntiFeatures:
+  NonFreeNet:
+    en-US: Dig and Friends use the Soulseek network, whose server is not open source.
+  NonFreeAssets:
+    en-US: The interface is set in Array (Indian Type Foundry), a font the app may embed but that is not free software.
+Categories:
+  - Multimedia
+License: MIT
+AuthorName: Abhiroop1122
+WebSite: https://github.com/Abhiroop1122/Sonic
+SourceCode: https://github.com/Abhiroop1122/Sonic
+IssueTracker: https://github.com/Abhiroop1122/Sonic/issues
+Changelog: https://github.com/Abhiroop1122/Sonic/blob/HEAD/CHANGELOG.md
+AutoName: Sonic.

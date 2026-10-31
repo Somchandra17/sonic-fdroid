@@ -1,0 +1,8 @@
+repo/
+archive/
+tmp/
+keystore.p12
+*.jks
+config.yml.bak
+metadata/app.sonic/
+site/

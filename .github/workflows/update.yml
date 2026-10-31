@@ -1,0 +1,63 @@
+name: Update the repository
+
+# Every six hours, and by hand from the Actions tab after a release: fetch the newest Sonic
+# releases, sign a fresh index and publish it to GitHub Pages.
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install fdroidserver
+        run: pip install "fdroidserver>=2.3,<3"
+      - name: Fetch the releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/fetch.sh
+      - name: Sign the index
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+          KEYSTOREPASS: ${{ secrets.KEYSTOREPASS }}
+          KEYPASS: ${{ secrets.KEYPASS }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > keystore.p12
+          chmod 600 keystore.p12 config.yml
+          mkdir -p repo/icons && cp icon.png repo/icons/icon.png
+          fdroid update --verbose --use-date-from-apk
+          rm keystore.p12
+      - name: Lay out the site
+        run: |
+          mkdir -p site
+          cp -r repo site/repo
+          cp index.html site/
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
