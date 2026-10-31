@@ -1,26 +1,48 @@
 name: Update the repository
 
-# Every six hours, and by hand from the Actions tab after a release: fetch the newest Sonic
-# releases, sign a fresh index and publish it to GitHub Pages.
+# Every hour, look for a Sonic release the repository doesn't serve yet; publish only then.
+# A push or a run from the Actions tab always publishes. A keepalive commit every 45 quiet days
+# stops GitHub from switching the hourly schedule off (it does after 60 days without activity).
 on:
   schedule:
-    - cron: "17 */6 * * *"
+    - cron: "23 * * * *"
   workflow_dispatch:
   push:
     branches: [main]
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.compare.outputs.publish }}
+    steps:
+      - id: compare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          latest=$(gh release view --repo Abhiroop1122/Sonic --json tagName -q .tagName)
+          served=$(curl -fsSL https://somchandra17.github.io/sonic-fdroid/repo/index-v2.json \
+            | jq -r '.packages["app.sonic"].versions[].manifest.versionName' || true)
+          echo "latest $latest; served: $(echo $served)"
+          if [ "$EVENT" != schedule ] || ! printf '%s\n' $served | grep -qx "${latest#v}"; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -55,9 +77,29 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  keepalive:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Commit if the repository has been quiet for 45 days
+        run: |
+          last=$(git log -1 --format=%ct)
+          if [ $(( $(date +%s) - last )) -gt $(( 45 * 86400 )) ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898333+github-actions[bot]@users.noreply.github.com"
+            git commit --allow-empty -m "Keepalive: keep the hourly schedule switched on"
+            git push
+          fi
